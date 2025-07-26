@@ -10,7 +10,8 @@
     "server": "node server/api.js",
     "start": "npm run server",
     "logger": "node server/mqtt-logger.js"
-  "author": "",
+  },
+  "author": "Akhmadi",
   "license": "ISC",
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",
