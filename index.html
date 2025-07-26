@@ -213,6 +213,9 @@
                             <button id="refresh-data" class="btn btn-outline-secondary">
                                 <i class="fas fa-sync-alt me-1"></i> Segarkan Data
                             </button>
+                            <button id="export-data" class="btn btn-outline-info">
+                                <i class="fas fa-download me-1"></i> Export Data
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -480,6 +483,92 @@
             chart.update('none'); // Update tanpa animasi untuk performa lebih baik
         }
 
+        // Load data historis dari database
+        async function loadHistoricalData() {
+            try {
+                const response = await fetch('/api/sensor-data?hours=24');
+                const result = await response.json();
+                
+                if (result.success && result.data.length > 0) {
+                    // Clear existing data
+                    chart.data.labels = [];
+                    chart.data.datasets[0].data = [];
+                    chart.data.datasets[1].data = [];
+                    
+                    // Load historical data
+                    result.data.forEach(record => {
+                        const time = new Date(record.recorded_at);
+                        const timeLabel = time.getHours() + ':' + time.getMinutes().toString().padStart(2, '0');
+                        
+                        chart.data.labels.push(timeLabel);
+                        chart.data.datasets[0].data.push(parseFloat(record.humidity));
+                        chart.data.datasets[1].data.push(parseFloat(record.temperature));
+                    });
+                    
+                    chart.update();
+                    console.log(`Loaded ${result.data.length} historical data points`);
+                }
+            } catch (error) {
+                console.error('Error loading historical data:', error);
+            }
+        }
+
+        // Export data function
+        async function exportData() {
+            const startDate = prompt('Masukkan tanggal mulai (YYYY-MM-DD):');
+            const endDate = prompt('Masukkan tanggal akhir (YYYY-MM-DD):');
+            
+            if (startDate && endDate) {
+                try {
+                    const response = await fetch(`/api/export?startDate=${startDate}&endDate=${endDate}`);
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // Convert to CSV
+                        const csvContent = convertToCSV(result.data);
+                        downloadCSV(csvContent, `sensor_data_${startDate}_to_${endDate}.csv`);
+                    } else {
+                        alert('Error: ' + result.error);
+                    }
+                } catch (error) {
+                    alert('Error exporting data: ' + error.message);
+                }
+            }
+        }
+
+        // Convert data to CSV
+        function convertToCSV(data) {
+            const headers = ['Tanggal/Waktu', 'Suhu (°C)', 'Kelembaban (%)', 'Status Pompa', 'Mode', 'Setpoint'];
+            const csvRows = [headers.join(',')];
+            
+            data.forEach(row => {
+                const values = [
+                    new Date(row.recorded_at).toLocaleString('id-ID'),
+                    row.temperature,
+                    row.humidity,
+                    row.pump_status ? 'Hidup' : 'Mati',
+                    row.mode,
+                    row.setpoint
+                ];
+                csvRows.push(values.join(','));
+            });
+            
+            return csvRows.join('\n');
+        }
+
+        // Download CSV file
+        function downloadCSV(csvContent, filename) {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         // Event Listeners
         document.getElementById('pump-toggle').addEventListener('click', () => {
             if (!sensorData.isAutoMode) {
@@ -522,12 +611,16 @@
             if (isConnected) {
                 // Request data terbaru dari ESP32
                 publishMQTT('greenhouse/request_data', '1');
+                // Load historical data from database
+                loadHistoricalData();
                 alert('Meminta data terbaru dari ESP32...');
             } else {
                 alert('Tidak terhubung ke ESP32. Mencoba koneksi ulang...');
                 connectMQTT();
             }
         });
+
+        document.getElementById('export-data').addEventListener('click', exportData);
 
         document.getElementById('auto-mode').addEventListener('click', () => {
             document.getElementById('auto-mode').classList.add('active');
@@ -552,6 +645,11 @@
             console.log('Menginisialisasi dashboard greenhouse...');
             updateConnectionStatus(false);
             connectMQTT();
+            
+            // Load historical data on startup
+            setTimeout(() => {
+                loadHistoricalData();
+            }, 2000);
             
             // Coba koneksi ulang setiap 30 detik jika terputus
             setInterval(() => {
