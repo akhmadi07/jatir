@@ -452,8 +452,8 @@
             host: 'f26c1dc91f934227bff8410cfeabae94.s1.eu.hivemq.cloud',
             port: 8884,
             protocol: 'wss',
-            username: 'greenhouse_user',
-            password: 'Greenhouse123!'
+            username: 'greenhouse_user', // Ganti dengan username HiveMQ Anda
+            password: 'Greenhouse123!'   // Ganti dengan password HiveMQ Anda
         };
 
         // Konfigurasi API
@@ -584,20 +584,28 @@
         // Koneksi MQTT
         function connectMQTT() {
             console.log('🔌 Menghubungkan ke MQTT broker...');
+            console.log('📡 Broker:', MQTT_CONFIG.host);
+            console.log('🔐 Username:', MQTT_CONFIG.username);
             
-            const brokerUrl = `${MQTT_CONFIG.protocol}://${MQTT_CONFIG.host}:${MQTT_CONFIG.port}/mqtt`;
+            // Coba beberapa format URL yang berbeda
+            const brokerUrl = `wss://${MQTT_CONFIG.host}:${MQTT_CONFIG.port}/mqtt`;
+            console.log('🌐 Connecting to:', brokerUrl);
             
             mqttClient = mqtt.connect(brokerUrl, {
                 clientId: 'greenhouse_dashboard_' + Math.random().toString(16).substr(2, 8),
                 username: MQTT_CONFIG.username,
                 password: MQTT_CONFIG.password,
                 clean: true,
-                reconnectPeriod: 5000,
-                connectTimeout: 30000
+                reconnectPeriod: 10000,
+                connectTimeout: 60000,
+                keepalive: 60,
+                protocolVersion: 4,
+                rejectUnauthorized: false
             });
 
             mqttClient.on('connect', function() {
                 console.log('✅ MQTT terhubung ke broker');
+                console.log('🎯 Client ID:', mqttClient.options.clientId);
                 updateMQTTStatus('online', 'MQTT: Terhubung');
                 
                 // Subscribe ke semua topic
@@ -634,7 +642,18 @@
 
             mqttClient.on('error', function(error) {
                 console.error('❌ MQTT connection error:', error);
+                console.error('🔍 Error details:', {
+                    message: error.message,
+                    code: error.code,
+                    errno: error.errno
+                });
                 updateMQTTStatus('offline', 'MQTT: Error koneksi');
+                
+                // Coba reconnect dengan delay
+                setTimeout(() => {
+                    console.log('🔄 Mencoba koneksi ulang...');
+                    connectMQTT();
+                }, 15000);
             });
 
             mqttClient.on('offline', function() {
@@ -645,6 +664,16 @@
             mqttClient.on('reconnect', function() {
                 console.log('🔄 MQTT reconnecting...');
                 updateMQTTStatus('warning', 'MQTT: Menghubungkan ulang...');
+            });
+            
+            mqttClient.on('close', function() {
+                console.log('🔌 MQTT connection closed');
+                updateMQTTStatus('offline', 'MQTT: Koneksi tertutup');
+            });
+            
+            mqttClient.on('disconnect', function() {
+                console.log('🔌 MQTT disconnected');
+                updateMQTTStatus('offline', 'MQTT: Terputus');
             });
         }
 

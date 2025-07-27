@@ -29,20 +29,29 @@ class MQTTLogger {
 
     // Inisialisasi koneksi MQTT
     initializeMQTT() {
+        console.log('🔌 Initializing MQTT connection...');
+        console.log('📡 Host:', process.env.HIVEMQ_HOST);
+        console.log('🔐 Username:', process.env.HIVEMQ_USERNAME);
+        console.log('🚪 Port:', process.env.HIVEMQ_PORT);
+        
         const brokerUrl = `wss://${process.env.HIVEMQ_HOST}:${process.env.HIVEMQ_PORT}/mqtt`;
+        console.log('🌐 Broker URL:', brokerUrl);
         
         this.mqttClient = mqtt.connect(brokerUrl, {
             clientId: 'greenhouse_logger_' + Math.random().toString(16).substr(2, 8),
             username: process.env.HIVEMQ_USERNAME,
             password: process.env.HIVEMQ_PASSWORD,
             clean: true,
-            reconnectPeriod: 5000,
-            connectTimeout: 30000,
-            keepalive: 60
+            reconnectPeriod: 10000,
+            connectTimeout: 60000,
+            keepalive: 60,
+            protocolVersion: 4,
+            rejectUnauthorized: false
         });
 
         this.mqttClient.on('connect', () => {
             console.log('✅ MQTT Logger terhubung ke HiveMQ broker');
+            console.log('🎯 Client ID:', this.mqttClient.options.clientId);
             this.isConnected = true;
             
             // Subscribe ke topic sensor

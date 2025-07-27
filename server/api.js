@@ -20,12 +20,17 @@ const mqttLogger = new MQTTLogger();
 // Test koneksi database saat startup
 async function initializeServer() {
     console.log('🚀 Memulai server API...');
+    console.log('🔧 Environment check:');
+    console.log('   - NEON_DATABASE_URL:', process.env.NEON_DATABASE_URL ? '✅ Set' : '❌ Missing');
+    console.log('   - HIVEMQ_HOST:', process.env.HIVEMQ_HOST ? '✅ Set' : '❌ Missing');
+    console.log('   - HIVEMQ_USERNAME:', process.env.HIVEMQ_USERNAME ? '✅ Set' : '❌ Missing');
+    console.log('   - HIVEMQ_PASSWORD:', process.env.HIVEMQ_PASSWORD ? '✅ Set' : '❌ Missing');
     
     // Test koneksi database
     const dbConnected = await db.testConnection();
     if (!dbConnected) {
         console.error('❌ Gagal terhubung ke database!');
-        process.exit(1);
+        console.error('⚠️ Server tetap berjalan, tapi database tidak tersedia');
     }
     
     console.log('✅ Server siap menerima koneksi');
