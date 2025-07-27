@@ -18,7 +18,20 @@ const db = new DatabaseManager();
 const mqttLogger = new MQTTLogger();
 
 // Test koneksi database saat startup
-db.testConnection();
+async function initializeServer() {
+    console.log('🚀 Memulai server API...');
+    
+    // Test koneksi database
+    const dbConnected = await db.testConnection();
+    if (!dbConnected) {
+        console.error('❌ Gagal terhubung ke database!');
+        process.exit(1);
+    }
+    
+    console.log('✅ Server siap menerima koneksi');
+}
+
+initializeServer();
 
 // Routes
 

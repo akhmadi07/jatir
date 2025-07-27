@@ -37,11 +37,12 @@ class MQTTLogger {
             password: process.env.HIVEMQ_PASSWORD,
             clean: true,
             reconnectPeriod: 5000,
-            connectTimeout: 30000
+            connectTimeout: 30000,
+            keepalive: 60
         });
 
         this.mqttClient.on('connect', () => {
-            console.log('MQTT Logger terhubung ke HiveMQ broker');
+            console.log('✅ MQTT Logger terhubung ke HiveMQ broker');
             this.isConnected = true;
             
             // Subscribe ke topic sensor
@@ -56,17 +57,20 @@ class MQTTLogger {
             topics.forEach(topic => {
                 this.mqttClient.subscribe(topic, (err) => {
                     if (err) {
-                        console.error(`Error subscribing to ${topic}:`, err);
+                        console.error(`❌ Error subscribing to ${topic}:`, err);
                     } else {
-                        console.log(`Subscribed to ${topic}`);
+                        console.log(`📡 Subscribed to ${topic}`);
                     }
                 });
             });
+            
+            // Publish status online
+            this.mqttClient.publish('greenhouse/logger/status', 'online', { retain: true });
         });
 
         this.mqttClient.on('message', (topic, message) => {
             const data = message.toString();
-            console.log(`Received: ${topic} = ${data}`);
+            console.log(`📨 Received: ${topic} = ${data}`);
             
             switch(topic) {
                 case 'greenhouse/dht22/temperature':
@@ -88,13 +92,17 @@ class MQTTLogger {
         });
 
         this.mqttClient.on('error', (error) => {
-            console.error('MQTT connection error:', error);
+            console.error('❌ MQTT connection error:', error);
             this.isConnected = false;
         });
 
         this.mqttClient.on('offline', () => {
-            console.log('MQTT client offline');
+            console.log('⚠️ MQTT client offline');
             this.isConnected = false;
+        });
+        
+        this.mqttClient.on('reconnect', () => {
+            console.log('🔄 MQTT reconnecting...');
         });
     }
 

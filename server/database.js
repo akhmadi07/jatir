@@ -98,10 +98,10 @@ class DatabaseManager {
     async testConnection() {
         try {
             const result = await this.sql`SELECT NOW() as current_time`;
-            console.log('Koneksi database berhasil:', result[0].current_time);
+            console.log('✅ Koneksi database berhasil:', result[0].current_time);
             return true;
         } catch (error) {
-            console.error('Error koneksi database:', error);
+            console.error('❌ Error koneksi database:', error);
             return false;
         }
     }
