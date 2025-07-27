@@ -464,12 +464,19 @@
         let sensorChart = null;
         let currentTimeRange = 1;
         let lastDataTime = null;
+        let connectionAttempts = 0;
+        let maxRetries = 5;
 
         // Inisialisasi aplikasi
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Memulai aplikasi dashboard...');
             initializeChart();
-            connectMQTT();
+            
+            // Delay koneksi MQTT untuk memastikan UI sudah siap
+            setTimeout(() => {
+                connectMQTT();
+            }, 1000);
+            
             checkDatabaseConnection();
             loadInitialData();
             
@@ -583,27 +590,50 @@
 
         // Koneksi MQTT
         function connectMQTT() {
+            connectionAttempts++;
             console.log('🔌 Menghubungkan ke MQTT broker...');
+            console.log(`🔄 Attempt ${connectionAttempts}/${maxRetries}`);
             console.log('📡 Broker:', MQTT_CONFIG.host);
             console.log('🔐 Username:', MQTT_CONFIG.username);
             
-            // Coba beberapa format URL yang berbeda
-            const brokerUrl = `wss://${MQTT_CONFIG.host}:${MQTT_CONFIG.port}/mqtt`;
+            // Coba berbagai format URL
+            const urlFormats = [
+                `wss://${MQTT_CONFIG.host}:${MQTT_CONFIG.port}/mqtt`,
+                `wss://${MQTT_CONFIG.host}:${MQTT_CONFIG.port}`,
+                `wss://${MQTT_CONFIG.host}:8883/mqtt`,
+                `wss://${MQTT_CONFIG.host}:8883`
+            ];
+            
+            const brokerUrl = urlFormats[(connectionAttempts - 1) % urlFormats.length];
             console.log('🌐 Connecting to:', brokerUrl);
+            
+            // Cleanup existing connection
+            if (mqttClient) {
+                try {
+                    mqttClient.end(true);
+                } catch (e) {
+                    console.log('🧹 Cleaned up previous connection');
+                }
+            }
             
             mqttClient = mqtt.connect(brokerUrl, {
                 clientId: 'greenhouse_dashboard_' + Math.random().toString(16).substr(2, 8),
                 username: MQTT_CONFIG.username,
                 password: MQTT_CONFIG.password,
                 clean: true,
-                reconnectPeriod: 10000,
-                connectTimeout: 60000,
+                reconnectPeriod: 0, // Disable auto-reconnect, we'll handle it manually
+                connectTimeout: 15000,
                 keepalive: 60,
                 protocolVersion: 4,
-                rejectUnauthorized: false
+                rejectUnauthorized: false,
+                transformWsUrl: (url, options, client) => {
+                    console.log('🔗 WebSocket URL:', url);
+                    return url;
+                }
             });
 
             mqttClient.on('connect', function() {
+                connectionAttempts = 0; // Reset counter on successful connection
                 console.log('✅ MQTT terhubung ke broker');
                 console.log('🎯 Client ID:', mqttClient.options.clientId);
                 updateMQTTStatus('online', 'MQTT: Terhubung');
@@ -628,7 +658,7 @@
                 });
                 
                 // Request data awal
-                requestESPData();
+                setTimeout(requestESPData, 2000);
             });
 
             mqttClient.on('message', function(topic, message) {
@@ -649,11 +679,17 @@
                 });
                 updateMQTTStatus('offline', 'MQTT: Error koneksi');
                 
-                // Coba reconnect dengan delay
-                setTimeout(() => {
-                    console.log('🔄 Mencoba koneksi ulang...');
-                    connectMQTT();
-                }, 15000);
+                // Retry dengan delay yang meningkat
+                if (connectionAttempts < maxRetries) {
+                    const delay = Math.min(5000 * connectionAttempts, 30000);
+                    console.log(`🔄 Retry dalam ${delay/1000} detik...`);
+                    setTimeout(() => {
+                        connectMQTT();
+                    }, delay);
+                } else {
+                    console.log('❌ Max retries reached. Please check configuration.');
+                    updateMQTTStatus('offline', 'MQTT: Max retries exceeded');
+                }
             });
 
             mqttClient.on('offline', function() {
@@ -675,6 +711,16 @@
                 console.log('🔌 MQTT disconnected');
                 updateMQTTStatus('offline', 'MQTT: Terputus');
             });
+            
+            // Timeout handler
+            setTimeout(() => {
+                if (!mqttClient || !mqttClient.connected) {
+                    console.log('⏰ Connection timeout, trying next URL format...');
+                    if (connectionAttempts < maxRetries) {
+                        connectMQTT();
+                    }
+                }
+            }, 20000);
         }
 
         // Handle pesan MQTT
@@ -834,6 +880,11 @@
             statusElement.className = `status-item status-${status}`;
             dot.className = `status-dot ${status}`;
             statusElement.querySelector('span').textContent = text;
+            
+            // Tambahkan info attempt jika sedang retry
+            if (status === 'offline' && connectionAttempts > 0 && connectionAttempts <= maxRetries) {
+                statusElement.querySelector('span').textContent = `${text} (${connectionAttempts}/${maxRetries})`;
+            }
         }
 
         function updateDBStatus(status, text) {
