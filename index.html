@@ -674,15 +674,21 @@
             <div class="chart-header">
                 <h5 class="chart-title">
                     <i class="fas fa-chart-line me-2"></i>
-                    Monitoring Data Real-time
+                    Monitoring Data 24 Jam Terakhir
                 </h5>
                 <div class="chart-controls">
-                    <button class="chart-btn active" data-period="1">1 Jam</button>
+                    <button class="chart-btn active" data-period="1">Real-time</button>
                     <button class="chart-btn" data-period="6">6 Jam</button>
                     <button class="chart-btn" data-period="24">24 Jam</button>
                 </div>
             </div>
             <canvas id="sensor-chart" height="400"></canvas>
+            <div class="mt-3">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Chart dioptimalkan untuk performa dengan maksimal 100 titik data
+                </small>
+            </div>
         </div>
     </div>
 
@@ -733,7 +739,7 @@
         let mqttClient = null;
         let isConnected = false;
         let chart = null;
-        let currentPeriod = 24;
+        let currentPeriod = 1; // Default ke 1 jam untuk performa lebih baik
         let sensorData = {
             temperature: 0,
             humidity: 0,
@@ -760,11 +766,11 @@
                             backgroundColor: 'rgba(22, 160, 133, 0.1)',
                             tension: 0.4,
                             fill: true,
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
+                            pointRadius: 2,
+                            pointHoverRadius: 4,
                             pointBackgroundColor: '#16a085',
                             pointBorderColor: '#ffffff',
-                            pointBorderWidth: 2
+                            pointBorderWidth: 1
                         },
                         {
                             label: 'Suhu (°C)',
@@ -773,11 +779,11 @@
                             backgroundColor: 'rgba(231, 76, 60, 0.1)',
                             tension: 0.4,
                             fill: true,
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
+                            pointRadius: 2,
+                            pointHoverRadius: 4,
                             pointBackgroundColor: '#e74c3c',
                             pointBorderColor: '#ffffff',
-                            pointBorderWidth: 2,
+                            pointBorderWidth: 1,
                             yAxisID: 'y1'
                         }
                     ]
@@ -785,11 +791,25 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: {
+                        duration: 300, // Animasi lebih cepat
+                        easing: 'easeOutQuart'
+                    },
+                    elements: {
+                        line: {
+                            borderWidth: 2
+                        }
+                    },
                     interaction: {
                         mode: 'index',
                         intersect: false
                     },
                     plugins: {
+                        decimation: {
+                            enabled: true,
+                            algorithm: 'lttb',
+                            samples: 100 // Maksimal 100 titik untuk performa
+                        },
                         legend: {
                             position: 'top',
                             labels: {
@@ -834,6 +854,9 @@
                             grid: {
                                 color: 'rgba(0, 0, 0, 0.1)'
                             }
+                            ticks: {
+                                maxTicksLimit: 12 // Maksimal 12 label waktu
+                            }
                         },
                         y: {
                             type: 'linear',
@@ -872,10 +895,6 @@
                             min: 20,
                             max: 35
                         }
-                    },
-                    animation: {
-                        duration: 750,
-                        easing: 'easeInOutQuart'
                     }
                 }
             });
@@ -1044,8 +1063,8 @@
             const timeLabel = now.getHours().toString().padStart(2, '0') + ':' + 
                             now.getMinutes().toString().padStart(2, '0');
             
-            // Limit data points for performance
-            const maxPoints = currentPeriod === 1 ? 60 : currentPeriod === 6 ? 72 : 144;
+            // Limit data points untuk performa optimal (maksimal 100 titik)
+            const maxPoints = 100;
             
             if (chart.data.labels.length >= maxPoints) {
                 chart.data.labels.shift();
@@ -1056,21 +1075,29 @@
             chart.data.labels.push(timeLabel);
             chart.data.datasets[0].data.push(parseFloat(sensorData.humidity));
             chart.data.datasets[1].data.push(parseFloat(sensorData.temperature));
-            chart.update('none');
+            chart.update('none'); // Update tanpa animasi untuk performa
         }
 
         // Load Historical Data
         async function loadHistoricalData(hours = 24) {
             try {
+                // Batasi maksimal 24 jam untuk performa
+                const limitedHours = Math.min(hours, 24);
+                
                 const response = await fetch(`/api/sensor-data?hours=${hours}`);
                 const result = await response.json();
                 
                 if (result.success && result.data.length > 0) {
+                    // Clear existing data
                     chart.data.labels = [];
                     chart.data.datasets[0].data = [];
                     chart.data.datasets[1].data = [];
                     
-                    result.data.forEach(record => {
+                    // Ambil data dengan interval yang sesuai untuk performa
+                    const dataInterval = Math.max(1, Math.floor(result.data.length / 100));
+                    const filteredData = result.data.filter((_, index) => index % dataInterval === 0);
+                    
+                    filteredData.forEach(record => {
                         const time = new Date(record.recorded_at);
                         const timeLabel = time.getHours().toString().padStart(2, '0') + ':' + 
                                         time.getMinutes().toString().padStart(2, '0');
@@ -1080,10 +1107,10 @@
                         chart.data.datasets[1].data.push(parseFloat(record.temperature));
                     });
                     
-                    chart.update();
+                    chart.update('none'); // Update tanpa animasi
                     sensorData.dailyReadings = result.count;
                     document.getElementById('daily-readings').textContent = result.count;
-                    console.log(`📊 Loaded ${result.data.length} data points`);
+                    console.log(`📊 Loaded ${filteredData.length} data points (filtered from ${result.data.length})`);
                 }
             } catch (error) {
                 console.error('❌ Error loading historical data:', error);
@@ -1201,7 +1228,7 @@
             
             // Load historical data
             setTimeout(() => {
-                loadHistoricalData(currentPeriod);
+                loadHistoricalData(1); // Mulai dengan 1 jam untuk loading cepat
             }, 2000);
             
             // Chart period buttons
@@ -1209,7 +1236,7 @@
                 btn.addEventListener('click', function() {
                     document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
-                    currentPeriod = parseInt(this.dataset.period);
+                    currentPeriod = Math.min(parseInt(this.dataset.period), 24); // Maksimal 24 jam
                     loadHistoricalData(currentPeriod);
                 });
             });

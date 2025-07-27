@@ -34,13 +34,15 @@ app.get('/api/health', (req, res) => {
 // Ambil data sensor terbaru untuk chart
 app.get('/api/sensor-data', async (req, res) => {
     try {
-        const hours = parseInt(req.query.hours) || 24;
+        // Batasi maksimal 24 jam untuk performa
+        const hours = Math.min(parseInt(req.query.hours) || 24, 24);
         const data = await db.getRecentSensorData(hours);
         
         res.json({
             success: true,
             data: data,
-            count: data.length
+            count: data.length,
+            hours: hours
         });
     } catch (error) {
         res.status(500).json({

@@ -31,6 +31,9 @@ class DatabaseManager {
     // Ambil data sensor terbaru (untuk chart)
     async getRecentSensorData(hours = 24) {
         try {
+            // Batasi maksimal 24 jam dan ambil data dengan interval yang sesuai
+            const limitedHours = Math.min(hours, 24);
+            
             const result = await this.sql`
                 SELECT 
                     temperature,
@@ -40,8 +43,9 @@ class DatabaseManager {
                     setpoint,
                     recorded_at
                 FROM sensor_readings 
-                WHERE recorded_at >= NOW() - INTERVAL '${hours} hours'
+                WHERE recorded_at >= NOW() - INTERVAL '${limitedHours} hours'
                 ORDER BY recorded_at ASC
+                LIMIT 500
             `;
             
             return result;
