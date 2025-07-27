@@ -93,7 +93,7 @@
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-6">
-                    <h1><i class="fas fa-seedling me-2"></i>Program Inovasi Budidaya dan Pengembangan Usaha Jamur Berbasis IoT dan Kecerdasan Buatan (AI) untuk pemberdayaan Masyarakat</h1>
+                    <h1><i class="fas fa-seedling me-1"></i>Program Inovasi Budidaya dan Pengembangan Usaha Jamur Berbasis IoT dan Kecerdasan Buatan (AI) untuk pemberdayaan Masyarakat</h1>
                 </div>
                 <div class="col-md-6 text-md-end">
                     <div class="mt-3 mt-md-0">
@@ -193,7 +193,7 @@
                                        id="humidity-setpoint" min="30" max="90" value="75">
                                 <span class="input-group-text">%</span>
                             </div>
-                            <div class="form-text">Atur antara 60% - 85% untuk jamur tiram</div>
+                            <div class="form-text">Atur antara 70% - 85% untuk jamur tiram</div>
                         </div>
                         
                         <div class="mb-4">
@@ -402,10 +402,10 @@
             
             if (connected) {
                 statusIndicator.className = 'status-indicator connected';
-                statusElement.innerHTML = '<span class="status-indicator connected"></span> ESP32 Terhubung';
+                statusElement.innerHTML = '<span class="status-indicator connected"></span> Koneksi IoT Terhubung';
             } else {
                 statusIndicator.className = 'status-indicator disconnected';
-                statusElement.innerHTML = '<span class="status-indicator disconnected"></span> ESP32 Terputus';
+                statusElement.innerHTML = '<span class="status-indicator disconnected"></span> Koneksi IoT Terputus';
             }
         }
 
