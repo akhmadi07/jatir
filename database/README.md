@@ -11,7 +11,7 @@
 
 ```bash
 # Menggunakan psql
-psql "your-neon-connection-string" -f database/neon-setup.sql
+psql "postgresql://neondb_owner:npg_gmbIWKjsQ4B3@ep-odd-frost-a1exs5cv-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require" -f database/neon-setup.sql
 
 # Atau menggunakan Neon SQL Editor di dashboard
 # Copy-paste isi file neon-setup.sql ke SQL Editor
@@ -124,12 +124,12 @@ LIMIT 7;
 
 #### Backup Data
 ```bash
-pg_dump "your-neon-connection-string" -t sensor_readings > backup.sql
+pg_dump "postgresql://neondb_owner:npg_gmbIWKjsQ4B3@ep-odd-frost-a1exs5cv-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require" -t sensor_readings > backup.sql
 ```
 
 #### Restore Data
 ```bash
-psql "your-neon-connection-string" < backup.sql
+psql "postgresql://neondb_owner:npg_gmbIWKjsQ4B3@ep-odd-frost-a1exs5cv-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require" < backup.sql
 ```
 
 ### 6. Environment Variables
@@ -137,7 +137,7 @@ psql "your-neon-connection-string" < backup.sql
 Pastikan file `.env` sudah dikonfigurasi:
 
 ```env
-NEON_DATABASE_URL=postgresql://username:password@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require
+NEON_DATABASE_URL=postgresql://neondb_owner:npg_gmbIWKjsQ4B3@ep-odd-frost-a1exs5cv-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 ```
 
 ### 7. Troubleshooting
